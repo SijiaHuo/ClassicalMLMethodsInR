@@ -6,5 +6,12 @@ In Q2, the script derives and implements the 1) g-priors 2) Gibbs Sampling, and 
 
 Then the code compares the performance of the results.
 
+### HW4_Sijia.pdf & HW4_Sijia.Rmd
+
+In Q1
+
+### HW5_Sijia.pdf & HW5_Sijia.Rmd
 
 
+
+### HW6_Sijia.pdf & HW6_Sijia.Rmd
