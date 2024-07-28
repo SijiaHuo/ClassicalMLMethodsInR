@@ -15,3 +15,6 @@ The script uses the MCMC method to build the admixture model for the population 
 In Q3 - Q6, the script derives, implements, and assesses the variational inference (VI) algorithm for the LDA model.
 
 ### HW6_Sijia.pdf & HW6_Sijia.Rmd
+
+The script derives and implements the forward algorithm, backward algorithm, and the Baum-Welch algorithm for the Hidden Markov Models (HMMs). 
+Then the script runs a toy example leveraging the Hidden Markov Model (HMM).
