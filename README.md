@@ -8,7 +8,7 @@ Then the code compares the performance of the results.
 
 ### HW4_Sijia.pdf & HW4_Sijia.Rmd
 
-In Q1
+The homework uses MCMC to estimate the admixture model for the population structure.
 
 ### HW5_Sijia.pdf & HW5_Sijia.Rmd
 
