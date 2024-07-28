@@ -1,0 +1,262 @@
+---
+title: "BST249 HW6"
+author: "Sijia Huo"
+date: "4/25/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### 1.
+
+```{r}
+
+# initial distribution (m): pi
+# transition matrix (m * m): T
+# emission matrix (m * k): phi
+# observed sequence (n): x
+
+# helper function for log-sum-exp
+# take log of elements to sum as input
+
+log_sum_exp = function(log_vec){
+  max = max(log_vec)
+  log_sum = max + log(sum(exp(log_vec-max)))
+  return(log_sum)
+}
+
+# forward function
+forward = function(log_pi,log_T,log_phi,x){
+  
+  # construct matrix to hold result
+  n = length(x)
+  k = ncol(log_phi)
+  m = nrow(log_phi)
+  log_s_matrix = matrix(0,n,m) # x by z
+  
+  # dynamic programming
+  
+  log_s_matrix[1,] = log_pi + log_phi[,x[1]] # for x1
+
+  for(j in 2:n){
+    for(i in 1:m){
+      # log-sum-exp
+      log_s_matrix[j,i] = log_sum_exp(log_s_matrix[j-1,] + log_T[,i] + log_phi[i,x[j]])
+    }
+  }
+
+  log_px = log_sum_exp(log_s_matrix[n,])
+  return(list(mat = log_s_matrix, px = log_px))
+}
+
+# backward
+backward = function(log_T,log_phi,x){
+  
+  # construct matrix to hold result
+  n = length(x)
+  k = ncol(log_phi)
+  m = nrow(log_phi)
+  log_r_matrix = matrix(0,n,m) # x by z
+  
+  # dynamic programming
+
+  # when j = n, all entries are 0, no need to change
+  for(j in (n-1):1){
+    for(i in 1:m){
+      # log-sum-exp
+      log_r_matrix[j,i] = log_sum_exp(log_T[i,] + log_phi[,x[j+1]] + log_r_matrix[j+1,])
+    }
+  }
+  return(log_r_matrix)
+}
+```
+
+Check the correctness of the implementation
+
+```{r,tidy=TRUE, tidy.opts=list(width.cutoff=75)}
+data = read.table("~/Documents/Spring2022/BST249/Homework/HW6/homework-6-data/x.txt", quote="\"", comment.char="")
+data = data[,1]
+
+# forward & backward
+forward_ret = forward(log(rep(1/10,10)), log(matrix(1/10,10,10)), log(matrix(1/59,10,59)),data)
+backward_ret = backward(log(matrix(1/10,10,10)), log(matrix(1/59,10,59)),data)
+
+# check correctness
+print(forward_ret$px) # forward p(x)
+print(log_sum_exp(log(rep(1/10,10)) + log(rep(1/59,10)) + backward_ret[1,])) # backword p(x)
+
+```
+
+Based on our setting, we have equal chance observing any of the $k = 59$ words at each of the $n = 292$ time steps. Therefore, we have $p(x_1,\cdots,x_n) = (\frac{1}{59})^{292}$ and $\log p(x_1,\cdots,x_n) = 292\log(\frac{1}{59}) = -1190.641$. Therefore, our implementation is correct.
+
+### 2.
+
+Derive $\varphi_{i}=\left(\varphi_{i 1}, \ldots, \varphi_{i k}\right)$ where $i = 1\cdots m$ using Lagrange multipliers as follows: Given $Q\left(\theta, \theta_{k}\right)=\sum_{i=1}^{m} \gamma_{1 i} \log \pi_{i}+\sum_{t=2}^{n} \sum_{i, j=1}^{m} \beta_{t i j} \log T_{i j}+\sum_{t=1}^{n} \sum_{i=1}^{m} \gamma_{t i} \log f_{\varphi_{i}}\left(x_{t}\right)$ and set $f_{\varphi_{i}}\left(x_{t}\right) = \sum_{K=1}^{k} \mathrm{I}(x_t = K)\varphi_{iK}$, we then have the following equation to estimate $\varphi_{iK}$ taking account of the constraint that $\sum_{K=1}^{k}\varphi_{iK} = 1$:
+
+$$
+\begin{aligned}
+0 &=\frac{\partial}{\partial \varphi_{iK}}\left(Q\left(\theta, \theta_{k}\right)-\lambda \sum_{K=1}^{k}\varphi_{iK}\right)\\
+0 &= \frac{\partial}{\partial \varphi_{iK}}\left( \sum_{t=1}^{n} \sum_{i=1}^{m} \gamma_{t i} \log \left(\sum_{K=1}^{k} \mathrm{I}(x_t = K)\varphi_{iK}\right)\right) - \lambda \\
+0 &=  \frac{\partial}{\partial \varphi_{iK}}\left( \sum_{i=1}^{m} \sum_{K=1}^{k} \sum_{t=1}^{n}  \mathrm{I}(x_t = K) \gamma_{t i} \log \left( \varphi_{iK}\right)\right) - \lambda\\
+0 &= \frac{\sum_{t=1}^{n}  \mathrm{I}(x_t = K) \gamma_{t i}}{\varphi_{iK}} - \lambda \\
+ \varphi_{iK} &= \frac{\sum_{t=1}^{n}  \mathrm{I}(x_t = K) \gamma_{t i}}{\lambda}
+\end{aligned}
+$$
+
+From the derivation above, we also have $\sum_{t=1}^{n}\mathrm{I}(x_t = K) \gamma_{t i} = \lambda\varphi_{iK}$. Therefore, we further have $\sum_{K=1}^{k}\sum_{t=1}^{n}\mathrm{I}(x_t = K) \gamma_{t i} = \sum_{K=1}^{k} \lambda \varphi_{iK} = \lambda\sum_{K=1}^{k}\varphi_{iK} = \lambda$. Since $\sum_{K=1}^{k}\sum_{t=1}^{n}\mathrm{I}(x_t = K) \gamma_{t i} =\sum_{t=1}^{n}\sum_{K=1}^{k}\mathrm{I}(x_t = K) \gamma_{t i} = \sum_{t=1}^{n} \gamma_{t i}$, we finally have $\lambda = \sum_{t=1}^{n} \gamma_{t i}$ and $\varphi_{iK} = \frac{\sum_{t=1}^{n}  \mathrm{I}(x_t = K) \gamma_{t i}}{\sum_{t=1}^{n} \gamma_{t i}}$
+
+
+Given $\beta_{t i j}=\mathbb{P}_{\theta_{k}}\left(Z_{t}=i, Z_{t+1}=j \mid x\right)$ (slightly different from the definition on slides) and $p\left(z_{j}, z_{j+1} \mid x_{1: n}\right) \propto p\left(x_{1: j}, z_{j}\right) p\left(z_{j+1} \mid z_{j}\right) p\left(x_{j+1} \mid z_{j+1}\right) p\left(x_{j+2: n} \mid z_{j+1}\right)$, we have 
+
+$$
+\begin{aligned}
+\beta_{t i j} &= \frac{p\left(x_{1: t}, z_{t}=i\right) p\left(z_{t+1}=j \mid z_{t}=i\right) p\left(x_{t+1} \mid z_{t+1}=j\right) p\left(x_{t+2: n} \mid z_{t+1}=j\right)}{\sum_{i=1}^m\sum_{j=1}^{m}p\left(x_{1: t}, z_{t}=i\right) p\left(z_{t+1}=j \mid z_{t}=i\right) p\left(x_{t+1} \mid z_{t+1}=j\right) p\left(x_{t+2: n} \mid z_{t+1}=j\right)} \\
+&= \frac{s_{t}\left(z_{t}=i\right)\cdot T_{ij}\cdot \varphi_{jx_{t+1}} \cdot r_{t+1}\left(z_{t+1}=j\right)}{\sum_{i=1}^m\sum_{j=1}^{m}s_{t}\left(z_{t}=i\right)\cdot T_{ij}\cdot \varphi_{jx_{t+1}} \cdot r_{t+1}\left(z_{t+1}=j\right)}
+\end{aligned}
+$$
+
+Given $\gamma_{t i}=\mathbb{P}_{\theta_{k}}\left(Z_{t}=i \mid x\right)$ and $p\left(z_{j} \mid x_{1: n}\right) \propto p\left(x_{1: j}, z_{j}\right) p\left(x_{j+1: n} \mid z_{j}\right)$ (from lecture slides), we have $$\gamma_{t i} = \frac{p\left(x_{1: t}, z_{t}=i\right) p\left(x_{t+1: n} \mid z_{t}=i\right)}{\sum_{j=1}^{m} p\left(x_{1: t}, z_{t}=i\right) p\left(x_{t+1: n} \mid z_{t}=i\right)} = \frac{s_{t}\left(z_{t}=i\right)r_{t}\left(z_{t}=i\right)}{\sum_{i=1}^{m}s_{t}\left(z_{t}=i\right)r_{t}\left(z_{t}=i\right)} = \sum_{j=1}^{m}\beta_{tij}$$
+
+With $\pi_{i}=\frac{\gamma_{1 i}}{\sum_{j=1}^{m} \gamma_{1 j}}$ and $T_{i j}=\frac{\sum_{t=1}^{n-1} \beta_{t i j}}{\sum_{t=1}^{n-1} \sum_{j=1}^{m} \beta_{t i j}}=\frac{\sum_{t=1}^{n-1} \beta_{t i j}}{\sum_{t=1}^{n-1} \gamma_{t i}}$ along with $p\left(x_{1: n}\right)=\sum_{z_{n}} s_{n}\left(z_{n}\right)$ (from lecture slides), the implementation of Baum–Welch algorithm is as follows:
+
+```{r,tidy=TRUE, tidy.opts=list(width.cutoff=75)}
+library(gtools)
+
+baum_welch = function(x,m,k) {
+  
+  # random initialization
+  log_pi= log(rdirichlet(1,rep(1,m)))
+  log_T = log(rdirichlet(m,rep(1,m)))
+  log_phi = log(rdirichlet(m,rep(1,k)))
+  n = length(x)
+  forward_ret = forward(log_pi,log_T,log_phi,x)
+  log_px_new = forward_ret$px
+  converge = FALSE # flag
+  counter = 0 # count the number of ronuds untill convergence
+  
+  while (!converge){
+    
+    counter = counter + 1
+    
+    # E step
+    log_s = forward_ret$mat
+    log_r = backward(log_T,log_phi,x)
+    
+    # beta
+    log_beta = array(0, dim = c(m,m,n-1))
+    for (t in 1:(n-1)) {
+      for (i in 1:m) {
+        # numerator of beta
+        log_beta[i,,t] = log_s[t,i] + log_T[i,] + log_phi[,x[t+1]] + log_r[t+1,]
+      }
+      log_beta_denom = log_sum_exp(log_beta[,,t])
+      log_beta[,,t] = log_beta[,,t]-log_beta_denom
+    }
+
+    # gamma
+    log_gamma = t(apply(log_beta, c(1, 3), log_sum_exp)) # time by state
+    log_gamma_tn = apply(log_beta[,,n-1], 2, log_sum_exp)  # for t=n ; 
+    log_gamma = rbind(log_gamma, log_gamma_tn)
+  
+    # M step
+    log_T = apply(log_beta, c(1,2), log_sum_exp) - apply(log_gamma[1:(n-1),], 2, log_sum_exp)
+    for (i in 1:m){
+      log_phi[i,] = sapply(1:k, function(j) log_sum_exp(log_gamma[which(x == j),i]) - log_sum_exp(log_gamma[,i]))
+    }
+    
+    log_pi = log_gamma[1,]-log_sum_exp(log_gamma[1,])
+    
+    # check convergence + E step
+    forward_ret = forward(log_pi,log_T,log_phi,x)
+    log_px_old = log_px_new; 
+    log_px_new = forward_ret$px
+    converge = (abs(log_px_new - log_px_old) < 0.01)
+  }
+  
+  return(list(log_pi = log_pi,log_T = log_T, log_phi = log_phi, log_px = log_px_new, iter = counter))
+}
+```
+
+Run the algorithm with different m and initializations.
+
+```{r}
+bw_ret = lapply(rep(c(10,30,100),each=3), baum_welch, x = data, k = 59)
+```
+
+Print out the number of iterations and the $\log p\left(x_{1}, \ldots, x_{n}\right)$ for each run. For each vector displayed below, the first 3 elements are for $m = 10$, the 4th-6th elements are for $m=30$ and the last three elements are for $m = 100$.
+
+```{r}
+# iterations
+sapply(bw_ret, function(ret) ret$iter)
+
+# log_p_x
+sapply(bw_ret, function(ret) ret$log_px)
+```
+
+We notice that the number of iterations are not significantly different across different m and the difference is mainly caused by the random initialization. Nevertheless, as the number of hidden states increase, $p\left(x_{1}, \ldots, x_{n}\right)$ increase. This means that with more hidden states, the overall likelihood at the last step increases and our estimation gets better.
+
+### 3.
+
+```{r,tidy=TRUE, tidy.opts=list(width.cutoff=75)}
+# HMM generating function with HMM parameters and sequence length
+
+code <- read.table("~/Documents/Spring2022/BST249/Homework/HW6/homework-6-data/code.txt", quote="\"", comment.char="")
+code_indx = code[,2]
+
+seq_gen = function(pi,T,phi,N,word_indx){
+  
+  # construct matrix to hold result
+  k = ncol(phi)
+  m = nrow(phi)
+  
+  # generate hidden states
+  z = rep(0,N)
+  z[1] = sample(1:m,size = 1,prob = pi) # initial probability
+  for(i in 2:N){
+    z[i] = sample(1:m,size = 1,prob = T[z[i-1],])
+  }
+  
+  # generate observed x, map back to word
+  x = sapply(1:N, function(i) sample(1:k,size=1,prob = phi[z[i],]))
+  x_word = sapply(1:N, function(i) word_indx[x[i]])
+  x_word = paste(x_word,collapse=" ")
+  return(x_word)
+}
+```
+
+Take the results of the first run for each of $m \in \{10,30,100\}$ in question 2 as the estimated parameters, skip step (a). Generate the estimated sequence (step b and c) as follows.
+
+```{r,echo=FALSE}
+source("wrap_long_lines.R")
+```
+
+```{r, linewidth=90}
+# generate and print out sequence
+N = 250
+
+# m = 10
+ret_10 = bw_ret[[1]]
+print(seq_gen(exp(ret_10$log_pi),exp(ret_10$log_T),exp(ret_10$log_phi),N,code_indx))
+
+# m = 30
+ret_30 = bw_ret[[4]]
+print(seq_gen(exp(ret_30$log_pi),exp(ret_30$log_T),exp(ret_30$log_phi),N,code_indx))
+
+# m = 100
+ret_100 = bw_ret[[7]]
+print(seq_gen(exp(ret_100$log_pi),exp(ret_100$log_T),exp(ret_100$log_phi),N,code_indx))
+
+```
+
+Compare the estimated sequence with the original sequence as follows.
+
+```{r, linewidth=90}
+# original string
+paste(sapply(1:292, function(i) code_indx[data[i]]),collapse=" ")
+```
+
+Final comments:
+
+As the number of hidden states increase, our estimation for the latent structure of the text becomes more and more accurate. As a result, the sequence generated using the estimation becomes more and more readable and interpretable. Nevertheless, we still can't restore the original text from our estimation due to the property of the HMM: the hidden state at each time step only depends on the state of the last step. 
