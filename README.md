@@ -8,10 +8,10 @@ Then the code compares the performance of the results.
 
 ### HW4_Sijia.pdf & HW4_Sijia.Rmd
 
-The homework uses MCMC to estimate the admixture model for the population structure.
+The script uses the MCMC method to build the admixture model for the population structure.
 
 ### HW5_Sijia.pdf & HW5_Sijia.Rmd
 
-
+In Q3 - Q6, the script derives, implements, and assesses the variational inference (VI) algorithm for the LDA model.
 
 ### HW6_Sijia.pdf & HW6_Sijia.Rmd
